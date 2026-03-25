@@ -143,7 +143,20 @@
             -webkit-overflow-scrolling: touch;
             overscroll-behavior: contain;
             touch-action: pan-y;
+
+            /* 视觉：隐藏右侧滚动条（保留滚动能力） */
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge Legacy */
         }
+        .scene::-webkit-scrollbar { width: 0; height: 0; } /* WebKit */
+        .scene::-webkit-scrollbar-thumb { background: transparent; } /* WebKit */
+        .scene::-webkit-scrollbar-track { background: transparent; } /* WebKit */
+
+        /* 关卡4容器也隐藏滚动条 */
+        .photo-stage { scrollbar-width: none; -ms-overflow-style: none; }
+        .photo-stage::-webkit-scrollbar { width: 0; height: 0; }
+        .photo-stage::-webkit-scrollbar-thumb { background: transparent; }
+        .photo-stage::-webkit-scrollbar-track { background: transparent; }
 
         .scene.active {
             display: flex;
@@ -785,6 +798,20 @@
             position: relative;
             z-index: 1;
             animation: storySlideIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* 关卡4：故事文本不再“占位显眼”，滚动到下面才看到 */
+        .photo-story {
+            margin-top: 12px;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity 0.35s ease, transform 0.35s ease;
+        }
+        /* 当关卡4的拍照容器滚动到接近底部时，再显示故事 */
+        /* 关卡4：当拍照区完整出现在视窗内时（通过 JS 加 class），再显示故事 */
+        .photo-stage.is-visible + .photo-story {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         @keyframes storySlideIn {
@@ -1857,6 +1884,15 @@
             position: relative;
             overflow: hidden;
             box-shadow: 0 10px 30px rgba(0,0,0,0.28);
+
+            /* 目标：进入关卡先看到标题 + 完整拍照UI（取景框不被挤压）。故事文本放到下面滚动才看到 */
+            height: 340px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+
+            /* 拍照区本身不滚动（避免出现“先看到故事/布局跳动”） */
+            overflow-y: hidden;
         }
 
         .photo-stage::before {
@@ -1877,38 +1913,12 @@
         .photo-topbar {
             position: relative;
             z-index: 1;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 12px;
+            display: none; /* 视觉精简：隐藏进度条与计数 */
         }
 
-        .photo-meter {
-            flex: 1;
-            height: 10px;
-            border-radius: 999px;
-            background: rgba(255,255,255,0.14);
-            overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.12);
-        }
-
-        .photo-meter-fill {
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg, rgba(0,217,255,0.9), rgba(243,156,18,0.95));
-            box-shadow: 0 0 20px rgba(0,217,255,0.35);
-            transition: width 0.25s ease;
-        }
-
-        .photo-score {
-            min-width: 88px;
-            text-align: right;
-            color: rgba(255,255,255,0.92);
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
+        .photo-meter { display: none; }
+        .photo-meter-fill { display: none; }
+        .photo-score { display: none; }
 
         .camera-view {
             position: relative;
@@ -1919,6 +1929,10 @@
             border: 1px solid rgba(255,255,255,0.12);
             overflow: hidden;
             box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+
+            /* 兜底：小屏时仍保留一个合理取景高度（不被 flex/挤压影响） */
+            min-height: 240px;
+            flex: 0 0 auto;
         }
 
         .camera-view .grid {
@@ -1984,20 +1998,6 @@
 
         /* 兜底交互：允许“点圈内/镜头内任意位置 = 按快门” */
         .camera-view:active { transform: translateZ(0); }
-
-        .shutter-btn {
-            position: absolute;
-            left: 50%;
-            bottom: 14px;
-            transform: translateX(-50%);
-            width: calc(100% - 28px);
-            max-width: 260px;
-            margin-top: 0;
-            z-index: 5;
-        }
-
-        /* 防止后面的 .shutter-btn 样式把定位覆盖掉 */
-        .photo-stage .shutter-btn { position: absolute; }
 
         .focus-ring .ring {
             position: absolute;
@@ -2503,13 +2503,13 @@
                     <h2 class="level-title">🐥 完美合照挑战</h2>
                 </div>
 
-                <div class="level-story">
-                    <p>🐥 来到了上海迪士尼，远处的【米奇】正在挥手。🐭✨</p>
-                    <p style="margin-top: 10px;">传说中我们和米奇拍到过一张“完美照片”。现在要靠你复刻那一瞬间！</p>
-                </div>
-
                 <div class="photo-stage" id="photoStage">
-                    <div class="photo-topbar" style="display:none;"></div>
+                    <div class="photo-topbar">
+                        <div class="photo-meter">
+                            <div class="photo-meter-fill" id="photoMeterFill"></div>
+                        </div>
+                        <div class="photo-score" id="photoScore">0 / 3</div>
+                    </div>
 
                     <div class="camera-view" id="cameraView">
                         <div class="grid"></div>
@@ -2527,11 +2527,11 @@
                         <div class="camera-flash" id="cameraFlash"></div>
                     </div>
 
-                    <button class="shutter-btn" id="shutterBtn" onclick="photoShutter()" style="display:none;">
-                        <span>📸 咔嚓！按下快门</span>
-                    </button>
+                </div>
 
-                    <div class="photo-help" id="photoHelp" style="display:none;"></div>
+                <div class="level-story photo-story">
+                    <p>🐥 来到了上海迪士尼，远处的【米奇】正在挥手。🐭✨</p>
+                    <p style="margin-top: 10px;">传说中我们和米奇拍到过一张"完美照片"。现在要靠你复刻那一瞬间！</p>
                 </div>
 
                 <button class="back-btn" onclick="backToHall()">← 返回大厅</button>
@@ -3271,7 +3271,11 @@
             state: 'idle',
             startAt: 0,
             duration: 1800,
-            raf: 0
+            raf: 0,
+            // tap-vs-scroll guard
+            _downX: 0,
+            _downY: 0,
+            _moved: false
         };
 
         function resetPhotoLevel() {
@@ -3280,21 +3284,11 @@
             photoLevel.startAt = 0;
             photoLevel.duration = 1800;
 
-            const fill = document.getElementById('photoMeterFill');
-            const score = document.getElementById('photoScore');
-            const help = document.getElementById('photoHelp');
             const shrink = document.getElementById('shrinkRing');
             const ring = document.getElementById('focusRing');
-            const btn = document.getElementById('shutterBtn');
 
-            if (fill) fill.style.width = '0%';
-            if (score) score.textContent = `0 / ${photoLevel.target}`;
-            if (help) {
-                help.innerHTML = '玩法：看到橙色缩圈收缩到蓝色对焦圈附近时，点击「快门」即可判定。需要成功拍到 <b>3 张</b> 才算通关。';
-            }
             if (shrink) shrink.style.transform = 'translate(-50%, -50%) scale(1.7)';
             if (ring) { ring.classList.remove('active','good','bad'); }
-            if (btn) { btn.disabled = false; btn.style.opacity = ''; }
 
             if (photoLevel.raf) {
                 cancelAnimationFrame(photoLevel.raf);
@@ -3304,64 +3298,72 @@
 
         function initPhotoLevel() {
             resetPhotoLevel();
+
+            // 关卡4：进入关卡时，先只展示标题+完整拍照UI；故事文本等“拍照UI完整出现后”再出现
+            try {
+                const stage = document.getElementById('photoStage');
+                const scene = document.getElementById('scene-level4');
+                if (stage) stage.classList.remove('is-visible');
+
+                const updateVisible = () => {
+                    if (!stage || !scene) return;
+                    const stageRect = stage.getBoundingClientRect();
+                    const sceneRect = scene.getBoundingClientRect();
+                    // stage 顶部已进入视野，且底部不被遮挡（= 完整可见）
+                    const fullyVisible = stageRect.top >= sceneRect.top + 2 && stageRect.bottom <= sceneRect.bottom - 2;
+                    stage.classList.toggle('is-visible', fullyVisible);
+                };
+
+                if (scene && !scene.dataset.stageVisibleBound) {
+                    scene.dataset.stageVisibleBound = '1';
+                    scene.addEventListener('scroll', updateVisible, { passive: true });
+                    window.addEventListener('resize', updateVisible, { passive: true });
+                }
+
+                // 初始计算：确保一进来先是隐藏故事
+                updateVisible();
+                // 再延迟一次：等字体/布局稳定
+                setTimeout(updateVisible, 50);
+            } catch (e) {}
+
+            // 绑定交互（只绑一次）：取景框“点击才拍、滑动不拍”
+            try {
+
+                const view = document.getElementById('cameraView');
+                if (view && !view.dataset.bound) {
+                    view.dataset.bound = '1';
+
+                    // ---- 以下是原有：点击才拍、滑动不拍 ----
+
+                    const TH = 10; // px
+                    view.addEventListener('touchstart', (e) => {
+                        if (!e.touches || !e.touches[0]) return;
+                        const t = e.touches[0];
+                        photoLevel._downX = t.clientX;
+                        photoLevel._downY = t.clientY;
+                        photoLevel._moved = false;
+                    }, { passive: true });
+
+                    view.addEventListener('touchmove', (e) => {
+                        if (!e.touches || !e.touches[0]) return;
+                        const t = e.touches[0];
+                        if (Math.abs(t.clientX - photoLevel._downX) > TH || Math.abs(t.clientY - photoLevel._downY) > TH) {
+                            photoLevel._moved = true;
+                        }
+                    }, { passive: true });
+
+                    view.addEventListener('touchend', () => {
+                        if (!photoLevel._moved) photoShutter();
+                    });
+
+                    // PC 也能点
+                    view.addEventListener('click', () => photoShutter());
+                }
+            } catch (e) {}
+
             photoLevel.duration = 1500 + Math.floor(Math.random() * 800);
             photoLevel.state = 'running';
             photoLevel.startAt = performance.now();
-
-            // 移动端：区分“滑动”和“点击”，避免拍照区域吞掉滚动手势
-            // 逻辑：如果手指/鼠标按下后移动距离超过阈值，则认为是在滚动，不触发快门
-            try {
-                const el = document.getElementById('cameraView');
-                if (el && !el.dataset.scrollTapReady) {
-                    el.dataset.scrollTapReady = '1';
-
-                    let startX = 0;
-                    let startY = 0;
-                    let moved = false;
-                    const TH = 10; // px
-
-                    const onDown = (x, y) => {
-                        startX = x;
-                        startY = y;
-                        moved = false;
-                    };
-
-                    const onMove = (x, y) => {
-                        if (moved) return;
-                        if (Math.abs(x - startX) > TH || Math.abs(y - startY) > TH) moved = true;
-                    };
-
-                    // Touch
-                    el.addEventListener('touchstart', (e) => {
-                        if (!e.touches || !e.touches[0]) return;
-                        const t = e.touches[0];
-                        onDown(t.clientX, t.clientY);
-                    }, { passive: true });
-
-                    el.addEventListener('touchmove', (e) => {
-                        if (!e.touches || !e.touches[0]) return;
-                        const t = e.touches[0];
-                        onMove(t.clientX, t.clientY);
-                    }, { passive: true });
-
-                    el.addEventListener('touchend', () => {
-                        if (!moved) photoShutter();
-                    });
-
-                    // Mouse (PC)
-                    el.addEventListener('mousedown', (e) => {
-                        onDown(e.clientX, e.clientY);
-                    });
-
-                    el.addEventListener('mousemove', (e) => {
-                        onMove(e.clientX, e.clientY);
-                    });
-
-                    el.addEventListener('mouseup', () => {
-                        if (!moved) photoShutter();
-                    });
-                }
-            } catch (e) {}
 
             const ring = document.getElementById('focusRing');
             if (ring) ring.classList.add('active');
@@ -3385,8 +3387,6 @@
                 shrink.style.transform = `translate(-50%, -50%) scale(${scale.toFixed(4)})`;
             }
 
-            const fill = document.getElementById('photoMeterFill');
-            if (fill) fill.style.width = `${Math.round(t * 100)}%`;
 
             if (t >= 1) {
                 photoJudge('miss');
@@ -4079,3 +4079,4 @@
     </script>
 </body>
 </html>
+
