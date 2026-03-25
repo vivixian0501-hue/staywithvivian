@@ -1404,8 +1404,9 @@
 
         /* ========== 通关回礼抽卡：金光按钮 + 抽卡弹窗 ========== */
         .reward-btn-wrapper {
-            position: sticky;
-            bottom: 18px;
+            /* 默认不吸底：避免遮挡寄语阅读 */
+            position: relative;
+            bottom: auto;
             z-index: 20;
             margin: 14px auto 0;
             width: 100%;
@@ -1413,9 +1414,16 @@
             display: none;
         }
 
+        /* 显示，但先不 sticky（等用户滑到它再 sticky） */
         .reward-btn-wrapper.show {
             display: block;
             animation: textReveal 0.6s ease forwards;
+        }
+
+        /* 用户滑到按钮位置后：开始吸底，但不随你往上滚回到屏幕里 */
+        .reward-btn-wrapper.pinned {
+            position: sticky;
+            bottom: 18px;
         }
 
         .reward-btn {
@@ -2554,10 +2562,10 @@
                 <p class="password-hint">💡 提示：按照通关顺序，输入每个角色获得的碎片数字...</p>
 
                 <div class="password-input-container">
-                    <input type="text" class="password-digit" maxlength="1" id="pwd1" oninput="handlePasswordInput(this, 1)">
-                    <input type="text" class="password-digit" maxlength="1" id="pwd2" oninput="handlePasswordInput(this, 2)">
-                    <input type="text" class="password-digit" maxlength="1" id="pwd3" oninput="handlePasswordInput(this, 3)">
-                    <input type="text" class="password-digit" maxlength="1" id="pwd4" oninput="handlePasswordInput(this, 4)">
+                    <input type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" class="password-digit" maxlength="1" id="pwd1" oninput="handlePasswordInput(this, 1)">
+                    <input type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" class="password-digit" maxlength="1" id="pwd2" oninput="handlePasswordInput(this, 2)">
+                    <input type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" class="password-digit" maxlength="1" id="pwd3" oninput="handlePasswordInput(this, 3)">
+                    <input type="tel" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" class="password-digit" maxlength="1" id="pwd4" oninput="handlePasswordInput(this, 4)">
                 </div>
 
                 <p class="password-error" id="passwordError">密码错误，请重新输入！</p>
@@ -3493,6 +3501,9 @@
         }
 
         function handlePasswordInput(input, index) {
+            // 仅允许数字：过滤非数字字符
+            input.value = (input.value || '').replace(/\D/g, '').slice(0, 1);
+
             if (input.value.length === 1 && index < 4) {
                 document.getElementById(`pwd${index + 1}`).focus();
             }
@@ -3537,7 +3548,7 @@
 
             // 重置可见性
             slogan.style.opacity = '0';
-            rewardWrapper.classList.remove('show');
+            rewardWrapper.classList.remove('show','pinned');
             rewardWrapper.style.display = 'none';
             replayWrapper.style.display = 'none';
 
@@ -3566,11 +3577,41 @@
             void slogan.offsetHeight;
             slogan.style.animation = '';
 
-            // 2) 抽奖按钮
+            // 2) 抽奖按钮：不立即显示；等用户往下滑到按钮区域才显示（逻辑贴近“再玩一次”= 往下才看到）
             const rewardDelay = sloganDelay + 700;
             setTimeout(() => {
+                // 先把它加入文档流，但保持隐藏；等滚动到位置再显示
                 rewardWrapper.style.display = 'block';
-                rewardWrapper.classList.add('show');
+                rewardWrapper.classList.remove('show','pinned');
+
+                try {
+                    if (!finale.dataset.rewardRevealBound) {
+                        finale.dataset.rewardRevealBound = '1';
+
+                        const revealAndPinIfNeeded = () => {
+                            // 已显示就只做 pin 判定
+                            const rect = rewardWrapper.getBoundingClientRect();
+                            const seen = rect.top <= (window.innerHeight - 12);
+
+                            if (seen) {
+                                if (!rewardWrapper.classList.contains('show')) {
+                                    rewardWrapper.classList.add('show');
+                                }
+                                // 不再启用 pinned：保持在原位置，不吸底
+                                // rewardWrapper.classList.add('pinned');
+                            }
+                        };
+
+                        finale.addEventListener('scroll', revealAndPinIfNeeded, { passive: true });
+                        window.addEventListener('resize', revealAndPinIfNeeded, { passive: true });
+
+                        // 首次检查：通常会是 false（因为在顶部）
+                        revealAndPinIfNeeded();
+                    }
+                } catch (e) {
+                    // 兜底：出错就直接显示
+                    rewardWrapper.classList.add('show');
+                }
             }, rewardDelay);
 
             // 3) 再玩一次
