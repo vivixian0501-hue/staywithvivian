@@ -1583,6 +1583,17 @@
             margin-top: 14px;
         }
 
+        /* 抽奖完成后：仅保留【谢谢朵朵】并居中 */
+        .gacha-actions.single {
+            justify-content: center;
+        }
+
+        .gacha-actions.single .gacha-btn {
+            flex: 0 0 auto;
+            width: 65%;
+            max-width: 240px;
+        }
+
         .gacha-btn {
             flex: 1;
             padding: 12px 14px;
@@ -2396,7 +2407,7 @@
                 </div>
 
                <div class="level-question" id="moneyRunCard">
-  <p class="question-text">❓ 现金不够！我们必须顶着大暴雨从饭店冲回【银水庄】拿现金。</p>
+  <p class="question-text">❓ 现金不够！我们必须顶着大暴雨从饭店冲回【酒店】拿现金。</p>
 
   <div style="position:relative; margin-top:10px;">
     <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:900; color:#666; margin-bottom:8px;">
@@ -2443,8 +2454,30 @@
         color:#fff;
         background:linear-gradient(135deg,#3498db 0%,#9b59b6 55%,#ff6b9d 100%);
         box-shadow:0 10px 26px rgba(52,152,219,.25);
+        touch-action: manipulation;
       "
       onclick="moneyRunTap()"
+      ondblclick="event.preventDefault(); return false;"
+      onselectstart="return false;"
+      oncontextmenu="return false;"
+      onpointerdown="event.preventDefault();"
+      ontouchstart="event.preventDefault();"
+      ontouchend="event.preventDefault();"
+      ontouchmove="event.preventDefault();"
+      ontouchcancel="event.preventDefault();"
+      ongesturestart="event.preventDefault();"
+      ongesturechange="event.preventDefault();"
+      ongestureend="event.preventDefault();"
+      onmousedown="event.preventDefault();"
+      onmouseup="event.preventDefault();"
+      onmousemove="event.preventDefault();"
+      onwheel="event.preventDefault();"
+      tabindex="-1"
+      aria-label="点一下前进一点"
+      role="button"
+      draggable="false"
+      inputmode="none"
+      data-no-zoom="true"
     >
       👆 点一下前进一点！
     </button>
@@ -2645,7 +2678,7 @@
             </div>
             <div class="gacha-body">
                 <div class="gacha-card" id="gachaCard">
-                    <div class="gacha-rarity" id="gachaRarity">N</div>
+                    <div class="gacha-rarity" id="gachaRarity">？</div>
                     <div class="gacha-text" id="gachaText">赌狗来了，能抽到什么好东西呢</div>
                     <div class="gacha-desc" id="gachaDesc">（本系统由朵朵友情赞助，解释权归朵朵所有）</div>
                 </div>
@@ -2662,6 +2695,52 @@
     <div class="error-toast" id="errorToast"></div>
 
     <script>
+        // ==================== 全局：防缩放/防双击放大（移动端） ====================
+        // 目标：避免手机端快速连续点击触发浏览器双击缩放、文本选中等行为
+        (function preventGlobalZoom() {
+            try {
+                // 1) 阻止双击缩放（部分浏览器仍会触发 dblclick）
+                document.addEventListener('dblclick', function (e) {
+                    e.preventDefault();
+                }, { passive: false });
+
+                // 2) 阻止双指缩放/手势（iOS Safari）
+                document.addEventListener('gesturestart', function (e) {
+                    e.preventDefault();
+                }, { passive: false });
+                document.addEventListener('gesturechange', function (e) {
+                    e.preventDefault();
+                }, { passive: false });
+                document.addEventListener('gestureend', function (e) {
+                    e.preventDefault();
+                }, { passive: false });
+
+                // 3) 阻止双指 pinch（通用 touch）
+                document.addEventListener('touchstart', function (e) {
+                    if (e.touches && e.touches.length > 1) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+                document.addEventListener('touchmove', function (e) {
+                    if (e.touches && e.touches.length > 1) {
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+
+                // 4) 阻止“快速二连点”触发的双击缩放（iOS/部分 WebView）
+                let lastTouchEnd = 0;
+                document.addEventListener('touchend', function (e) {
+                    const now = Date.now();
+                    if (now - lastTouchEnd <= 300) {
+                        e.preventDefault();
+                    }
+                    lastTouchEnd = now;
+                }, { passive: false });
+            } catch (_) {
+                // ignore
+            }
+        })();
+
         // ==================== 游戏状态管理 ====================
         const gameState = {
             completedLevels: new Set(),
@@ -2708,7 +2787,7 @@
                 4: {
                     emoji: '🏰',
                     title: '美妙记忆！',
-                    text: '我们永远爱迪士尼！',
+                    text: '我们一起快乐无边！我们永远爱迪士尼！',
                     fragment: '迪士尼碎片',
                     code: '9'
                 }
@@ -3692,20 +3771,41 @@
 
         function lockGachaUI() {
             const btn = document.getElementById('gachaDrawBtn');
-            if (!btn) return;
-            btn.disabled = true;
-            btn.textContent = '已领取';
-            btn.style.opacity = '0.7';
-            btn.style.cursor = 'not-allowed';
+            if (btn) {
+                // 抽奖完成后：隐藏【领取/已领取】按钮
+                btn.disabled = true;
+                btn.style.display = 'none';
+            }
+
+            // 抽奖完成后：仅保留【谢谢朵朵】按钮并居中
+            const actions = document.querySelector('.gacha-actions');
+            if (actions) actions.classList.add('single');
+
+            // 抽奖完成后：保留并显示上方稀有度标志（N/R/SR/SSR/...）
+            // 注：未抽奖时在 unlockGachaUI() 隐藏；抽到结果时由 renderGachaResult() 显示
+            const rarityEl = document.getElementById('gachaRarity');
+            if (rarityEl) rarityEl.style.display = '';
         }
 
         function unlockGachaUI() {
+            // 未抽奖：隐藏上方 N 标志
+            const rarityEl = document.getElementById('gachaRarity');
+            if (rarityEl) {
+                rarityEl.style.display = 'none';
+            }
+
+            // 未抽奖：按钮区为双按钮布局
+            const actions = document.querySelector('.gacha-actions');
+            if (actions) actions.classList.remove('single');
+
             const btn = document.getElementById('gachaDrawBtn');
-            if (!btn) return;
-            btn.disabled = false;
-            btn.textContent = '抽一次';
-            btn.style.opacity = '';
-            btn.style.cursor = '';
+            if (btn) {
+                btn.style.display = '';
+                btn.disabled = false;
+                btn.textContent = '抽一次';
+                btn.style.opacity = '';
+                btn.style.cursor = '';
+            }
         }
 
         function showGachaOnceToast() {
@@ -3763,11 +3863,24 @@
             const modalEl = document.getElementById('gachaModal');
             if (!rarityEl || !textEl || !descEl || !cardEl || !modalEl) return;
 
+            // 抽到结果后才显示稀有度（N/R/SR/SSR/...）
+            rarityEl.style.display = '';
             rarityEl.textContent = result.rarity;
             rarityEl.className = `gacha-rarity rarity-${result.rarity}`;
 
             textEl.textContent = `${result.label} ${result.text}`;
             descEl.textContent = meta.fromStorage ? `（已领取）${result.desc}` : result.desc;
+
+            // 已抽过（从存储恢复）：也隐藏【领取/已领取】并只留【谢谢朵朵】
+            if (meta.fromStorage) {
+                lockGachaUI();
+            } else {
+                // 重新抽到（理论上不会发生多次）：保证按钮布局正常
+                const actions = document.querySelector('.gacha-actions');
+                if (actions) actions.classList.remove('single');
+                const btn = document.getElementById('gachaDrawBtn');
+                if (btn) btn.style.display = '';
+            }
 
             // 卡面氛围
             cardEl.classList.remove('ur-glow', 'ssr-glow', 'sr-glow', 'r-glow', 'n-glow');
@@ -4120,4 +4233,3 @@
     </script>
 </body>
 </html>
-
