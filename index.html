@@ -2407,7 +2407,7 @@
                 </div>
 
                <div class="level-question" id="moneyRunCard">
-  <p class="question-text">❓ 现金不够！我们必须顶着大暴雨从饭店冲回【酒店】拿现金。</p>
+  <p class="question-text">❓ 现金不够！我们必须顶着大暴雨从饭店冲回【银水庄】拿现金。</p>
 
   <div style="position:relative; margin-top:10px;">
     <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:900; color:#666; margin-bottom:8px;">
@@ -2438,7 +2438,7 @@
     </div>
   </div>
 
-     <button
+    <button
       id="moneyRunTap"
       style="
         margin-top:12px;
@@ -2656,7 +2656,7 @@
             </div>
             <div class="gacha-body">
                 <div class="gacha-card" id="gachaCard">
-                    <div class="gacha-rarity" id="gachaRarity">？</div>
+                    <div class="gacha-rarity" id="gachaRarity">N</div>
                     <div class="gacha-text" id="gachaText">赌狗来了，能抽到什么好东西呢</div>
                     <div class="gacha-desc" id="gachaDesc">（本系统由朵朵友情赞助，解释权归朵朵所有）</div>
                 </div>
@@ -2673,52 +2673,6 @@
     <div class="error-toast" id="errorToast"></div>
 
     <script>
-        // ==================== 全局：防缩放/防双击放大（移动端） ====================
-        // 目标：避免手机端快速连续点击触发浏览器双击缩放、文本选中等行为
-        (function preventGlobalZoom() {
-            try {
-                // 1) 阻止双击缩放（部分浏览器仍会触发 dblclick）
-                document.addEventListener('dblclick', function (e) {
-                    e.preventDefault();
-                }, { passive: false });
-
-                // 2) 阻止双指缩放/手势（iOS Safari）
-                document.addEventListener('gesturestart', function (e) {
-                    e.preventDefault();
-                }, { passive: false });
-                document.addEventListener('gesturechange', function (e) {
-                    e.preventDefault();
-                }, { passive: false });
-                document.addEventListener('gestureend', function (e) {
-                    e.preventDefault();
-                }, { passive: false });
-
-                // 3) 阻止双指 pinch（通用 touch）
-                document.addEventListener('touchstart', function (e) {
-                    if (e.touches && e.touches.length > 1) {
-                        e.preventDefault();
-                    }
-                }, { passive: false });
-                document.addEventListener('touchmove', function (e) {
-                    if (e.touches && e.touches.length > 1) {
-                        e.preventDefault();
-                    }
-                }, { passive: false });
-
-                // 4) 阻止“快速二连点”触发的双击缩放（iOS/部分 WebView）
-                let lastTouchEnd = 0;
-                document.addEventListener('touchend', function (e) {
-                    const now = Date.now();
-                    if (now - lastTouchEnd <= 300) {
-                        e.preventDefault();
-                    }
-                    lastTouchEnd = now;
-                }, { passive: false });
-            } catch (_) {
-                // ignore
-            }
-        })();
-
         // ==================== 游戏状态管理 ====================
         const gameState = {
             completedLevels: new Set(),
@@ -2744,28 +2698,28 @@
                 1: {
                     emoji: '⚖️',
                     title: '审判通过！',
-                    text: '庄晓曼点点头："算你敢作敢当。下一次，少说老娘坏话！"',
+                    text: '武藤纯子和庄晓曼知道有人为她们这么拼命吗',
                     fragment: '和好如初碎片',
                     code: '2'
                 },
                 2: {
                     emoji: '🌧️',
                     title: '暴风雨记忆！',
-                    text: '虽然成了落汤鸡，但那天的雨水、狂风和笑声，是我们最难忘的伊豆记忆。',
+                    text: '这下是真的so fresh so clean',
                     fragment: '落汤鸡碎片',
                     code: '0'
                 },
                 3: {
                     emoji: '🎰',
                     title: '刮刮乐大奖！',
-                    text: '刨冰车厘子的诱惑和你的热情我们全都收到啦！下次一定去（真的）！',
+                    text: '下次一定好吗好的',
                     fragment: '刮刮乐碎片',
                     code: '1'
                 },
                 4: {
                     emoji: '🏰',
                     title: '美妙记忆！',
-                    text: '我们一起快乐无边！我们永远爱迪士尼！',
+                    text: '我们一起快乐无边！我们彼此亲密无间！',
                     fragment: '迪士尼碎片',
                     code: '9'
                 }
@@ -3686,7 +3640,7 @@
         const gachaPool = [
             {
                 rarity: 'N',
-                rate: 40,
+                rate: 20,
                 label: '【谢谢参与】',
                 text: '恭喜获得“口头感谢”一次！',
                 desc: '好啦这个小游戏已经全程感谢了还要怎样！'
@@ -3700,7 +3654,7 @@
             },
             {
                 rarity: 'SR',
-                rate: 10,
+                rate: 20,
                 label: '【请吃饭的漂亮姐姐】',
                 text: '哇！朵朵要邀请你共进晚餐！',
                 desc: '寿司郎我请了！'
@@ -3710,7 +3664,7 @@
                 rate: 20,
                 label: '【???】',
                 text: '天呐！恭喜你获得朵朵亲签拍立得一枚',
-                desc: '让我们谢谢女明星~也可以变成跟你的合影噢~'
+                desc: '让我们谢谢女明星~1v1拍立得机会！！'
             }
         ];
 
@@ -3758,19 +3712,12 @@
             // 抽奖完成后：仅保留【谢谢朵朵】按钮并居中
             const actions = document.querySelector('.gacha-actions');
             if (actions) actions.classList.add('single');
-
-            // 抽奖完成后：保留并显示上方稀有度标志（N/R/SR/SSR/...）
-            // 注：未抽奖时在 unlockGachaUI() 隐藏；抽到结果时由 renderGachaResult() 显示
-            const rarityEl = document.getElementById('gachaRarity');
-            if (rarityEl) rarityEl.style.display = '';
         }
 
         function unlockGachaUI() {
             // 未抽奖：隐藏上方 N 标志
             const rarityEl = document.getElementById('gachaRarity');
-            if (rarityEl) {
-                rarityEl.style.display = 'none';
-            }
+            if (rarityEl) rarityEl.style.display = 'none';
 
             // 未抽奖：按钮区为双按钮布局
             const actions = document.querySelector('.gacha-actions');
@@ -3853,7 +3800,6 @@
             if (meta.fromStorage) {
                 lockGachaUI();
             } else {
-                // 重新抽到（理论上不会发生多次）：保证按钮布局正常
                 const actions = document.querySelector('.gacha-actions');
                 if (actions) actions.classList.remove('single');
                 const btn = document.getElementById('gachaDrawBtn');
